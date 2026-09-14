@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# Databricks bundles
+.databricks/bundle/*/bin/
+.databricks/bundle/*/terraform/
+
+# MLflow local
+mlflow.db
+mlruns/
+
+# Scripts de ejecución local (no relevantes para el taller)
+run_scripts.py
+run_benchmark_truth.py
