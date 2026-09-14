@@ -42,11 +42,9 @@ sancor-genie-workshop/
 ├── 04_rls_policy.sql              # Paso 5: seguridad a nivel de filas (RLS)
 ├── 05_validation.sql              # Paso 6: validación del entorno antes del taller
 ├── 06_rag_knowledge_base.py       # Paso 7: base de conocimiento en UC Volume
-├── resources/
-│   ├── knowledge_store_snippets.md  # Guía completa de curación del Knowledge Store
-│   └── benchmark_questions.md       # 7 preguntas benchmark con SQL de referencia
-├── agent/                         # Agente conversacional (componente separado)
-└── agent-app/                     # Aplicación Databricks Apps (componente separado)
+└── resources/
+    ├── knowledge_store_snippets.md  # Guía completa de curación del Knowledge Store
+    └── benchmark_questions.md       # 7 preguntas benchmark con SQL de referencia
 ```
 
 ---
@@ -162,10 +160,3 @@ de cada capa de curación.
 4. Después de cada capa, volver a ejecutar los benchmarks relevantes
 5. Comparar resultados antes vs. después
 
----
-
-## Componentes adicionales
-
-Las carpetas `agent/` y `agent-app/` contienen componentes avanzados del taller
-que se presentan en una etapa posterior, independiente de la configuración del
-Genie Agent descrita en este README.
