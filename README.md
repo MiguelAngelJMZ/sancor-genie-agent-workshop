@@ -54,9 +54,8 @@ sancor-genie-workshop/
 ## Descripción de los scripts
 
 ### `00_setup.sql` — Configuración inicial
-Crea el catálogo `genie_workshop`, el schema `sancor` y otorga los permisos
-necesarios a todos los participantes del workspace.
-**Ejecutar una vez como administrador antes del taller.**
+Crea el catálogo `genie_workshop` y el schema `sancor` en tu workspace.
+**Ejecutar una vez antes de comenzar.**
 
 ### `01_data_generation.py` — Generación de datos ⭐
 Genera el dataset sintético completo de Sancor Seguros con `random.seed(42)`
@@ -146,7 +145,7 @@ de cada capa de curación.
 ### Preparación (instructor — antes del taller)
 
 ```
-00_setup.sql              → crear catálogo y permisos
+00_setup.sql              → crear catálogo y schema
 01_data_generation.py     → generar las 5 tablas
 02_metadata.sql           → aplicar comentarios y tags PII
 03_uc_functions.sql       → crear las 5 funciones UC
