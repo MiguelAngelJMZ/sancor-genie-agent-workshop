@@ -43,6 +43,8 @@ sancor-genie-workshop/
 ├── 05_validation.sql              # Paso 6: validación del entorno antes del taller
 ├── 06_rag_knowledge_base.py       # Paso 7: base de conocimiento en UC Volume
 ├── 07_uc_functions_defaults.sql   # Paso 8: funciones UC con parámetros DEFAULT (agente custom)
+├── 08_evaluate_agent.py           # Paso 9: evaluación del agente custom (MLflow + simulador)
+├── 09_mlops_end_to_end.py         # Paso 10: MLOps end-to-end (cierre del taller)
 └── resources/
     ├── knowledge_store_snippets.md  # Guía completa de curación del Knowledge Store
     └── benchmark_questions.md       # 7 preguntas benchmark con SQL de referencia
@@ -118,6 +120,19 @@ Recrea las funciones `calcular_indice_siniestralidad`, `proyectar_renovaciones` 
 Necesario para el **agente custom** (Parte 2): su ejecutor no admite `None` en un parámetro
 requerido, así que los DEFAULT vuelven opcionales los filtros y el modelo puede omitirlos al
 pedir agregados. Cambio retrocompatible: Genie y las llamadas existentes siguen igual.
+
+### `08_evaluate_agent.py` — Evaluación del agente custom
+Notebook que **evalúa la calidad del agente** con `mlflow.genai.evaluate` + un
+`ConversationSimulator`. Reconstruye el agente (modelo + prompt + las 5 herramientas UC) y
+simula conversaciones multi-turno, midiendo con scorers de MLflow (Completeness, Safety,
+RelevanceToQuery, ToolCallCorrectness, etc.). Es el cierre de la Parte 2: *ya agregamos
+herramientas al agente, ahora medimos si responde bien*.
+
+### `09_mlops_end_to_end.py` — MLOps end-to-end
+Notebook de cierre del taller: recorre el **ciclo completo de MLOps** en Databricks sobre los
+mismos datos de Sancor, con el caso de uso *predecir si un siniestro será rechazado*. Cubre
+EDA → feature engineering → entrenamiento con MLflow → evaluación → registro en Unity Catalog
+→ Model Serving → Feature Store → batch inference → monitoreo con Inference Tables.
 
 ---
 
@@ -527,4 +542,59 @@ responde que no registró nada.
 | Cómo se añade | **AI Playground** (sin código) | **Editando el código** del agente |
 | Gobernanza | Unity Catalog (EXECUTE) | Warehouse `CAN_USE` + grants de tabla |
 | Puede hacer `INSERT` | ❌ No | ✅ Sí (vía Statement Execution API) |
+
+### Paso 3 — Evaluar el agente (`08_evaluate_agent.py`)
+
+Ya le agregamos herramientas al agente y lo desplegamos. **Ahora medimos si responde bien**,
+en lugar de confiar en pruebas manuales sueltas. El notebook `08_evaluate_agent.py` hace una
+evaluación sistemática con MLflow:
+
+1. **Reconstruye el agente** dentro del notebook con la misma configuración (modelo, system
+   prompt y las 5 herramientas UC vía MCP) y lo expone como una `predict_fn`.
+2. **Simula conversaciones multi-turno** con `ConversationSimulator`: un modelo actúa como
+   usuario siguiendo un `goal` + `persona`, y conversa con el agente durante varios turnos.
+3. **Puntúa con scorers de MLflow** (`Completeness`, `RelevanceToQuery`, `ToolCallCorrectness`,
+   `Safety`, `Fluency`, etc.) y registra métricas y trazas en un experiment.
+
+```python
+uv run agent-evaluate          # localmente desde el repo del agente
+# o abrir 08_evaluate_agent.py en el workspace y ejecutarlo celda por celda
+```
+
+> **Correr interactivamente** (celda por celda en el notebook) o localmente con OAuth. La
+> evaluación abre el link al run de MLflow para inspeccionar métricas y las trazas de cada turno.
+
+Con esto cerramos la Parte 2: pasamos de *"¿el agente parece funcionar?"* a *"¿qué tan bien
+responde, medido con métricas reproducibles?"*.
+
+---
+
+## Parte 3 — MLOps End-to-End (`09_mlops_end_to_end.py`)
+
+La parte final del taller sale del mundo de los agentes y recorre el **ciclo completo de
+MLOps clásico** en Databricks, usando los mismos datos de Sancor. El mensaje: la plataforma
+cubre tanto agentes GenAI como ML tabular tradicional, con el mismo gobierno (Unity Catalog)
+y las mismas herramientas de tracking, serving y monitoreo.
+
+**Caso de uso:** predecir si un siniestro será **rechazado**, para priorizar la revisión de
+reclamos.
+
+| Paso | Tema | Herramienta Databricks |
+|------|------|------------------------|
+| 1 | Exploración de datos (EDA) | Spark SQL, PySpark |
+| 2 | Feature engineering (joins multi-tabla) | PySpark |
+| 3 | Entrenamiento (Random Forest en pipeline) | scikit-learn + MLflow Tracking |
+| 4 | Evaluación (ROC, Precision-Recall, threshold) | scikit-learn + matplotlib |
+| 5 | Registro del modelo (versionado + alias `champion`) | MLflow Model Registry en Unity Catalog |
+| 6 | Despliegue como REST API (scale-to-zero) | Model Serving |
+| 7 | Features reutilizables | Feature Store (`FeatureLookup`) |
+| 8 | Batch inference sobre siniestros pendientes | `fe.score_batch` |
+| 9 | Monitoreo (logging de requests/responses) | Inference Tables |
+
+El notebook usa **widgets** para catálogo, schema, nombre del modelo y del endpoint, así que
+se puede correr sin editar código. Es un notebook autónomo: se ejecuta de arriba a abajo en
+el workspace.
+
+> **Nota:** el AUC ronda ~0.60 a propósito — la señal es débil en datos sintéticos. El
+> objetivo es demostrar el **flujo MLOps end-to-end**, no optimizar el modelo.
 
