@@ -258,8 +258,8 @@ Sobre el código generado (estructura `agent_server/`) hay que tocar **4 lugares
 |---|---------|--------|
 | 1 | `agent_server/tools.py` *(nuevo)* | Definir la tool `registrar_siniestro` |
 | 2 | `agent_server/agent.py` | Importar la tool, registrarla en el `Agent` y ampliar el system prompt |
-| 3 | `databricks.yml` | Dar acceso `CAN_USE` a un SQL warehouse + variable de entorno |
-| 4 | `.env` | `SQL_WAREHOUSE_ID` para desarrollo local |
+| 3 | `app.yaml` *(deploy)* | Env var `SQL_WAREHOUSE_ID` + adjuntar el SQL warehouse (`CAN_USE`) |
+| 4 | `.env` *(local)* | `SQL_WAREHOUSE_ID` para desarrollo local |
 
 #### 2.1 — Crear `agent_server/tools.py`
 
@@ -441,24 +441,41 @@ Registro de siniestros (ESCRITURA con `registrar_siniestro`):
   crea la denuncia en estado "pendiente". Tras registrar, informa el siniestro_id asignado.
 ```
 
-#### 2.3 — Dar acceso al SQL warehouse en `databricks.yml`
+#### 2.3 — Configurar el SQL warehouse en la app
 
-El INSERT se ejecuta en un SQL warehouse, así que el *service principal* de la app necesita
-poder usarlo. Bajo `resources.apps.<app>.config.env` agregar la variable:
+Hacen falta **dos cosas**: (1) que el código conozca el warehouse vía la variable de entorno
+`SQL_WAREHOUSE_ID`, y (2) que el *service principal* de la app tenga permiso para usarlo.
+
+> ⚠️ **Gotcha clave (dónde va la variable de entorno).** Databricks Apps lee las env vars de
+> **`app.yaml`**. Si desplegaste desde el **AI Playground** o con `databricks apps deploy` —el
+> flujo de este taller—, **`app.yaml` es el archivo que se usa**, NO `databricks.yml`. Si solo
+> agregas la variable a `databricks.yml` (que únicamente aplica cuando despliegas con
+> `databricks bundle deploy`), la app arrancará **sin** `SQL_WAREHOUSE_ID` y la tool fallará con
+> *"SQL_WAREHOUSE_ID no está configurado"*.
+
+**a) Agregar la variable en `app.yaml`** (bajo `env:`), y **redeploy** la app:
 
 ```yaml
-          - name: SQL_WAREHOUSE_ID
-            value: "<tu_warehouse_id>"
+env:
+  # ...las demás variables...
+  - name: SQL_WAREHOUSE_ID
+    value: "<tu_warehouse_id>"
 ```
 
-Y bajo `resources.apps.<app>.resources` agregar el recurso (nótese el campo `id`):
+**b) Adjuntar el SQL warehouse como recurso de la app** (para que el SP tenga `CAN_USE`).
+Desde la UI de la app: *Edit → Resources → Add resource → SQL warehouse → CAN_USE*. Si usas
+DABs, el equivalente en `databricks.yml` bajo `resources.apps.<app>.resources` es:
 
 ```yaml
-        - name: 'sql_warehouse'
+        - name: 'sql-warehouse'
           sql_warehouse:
             id: '<tu_warehouse_id>'
             permission: 'CAN_USE'
 ```
+
+> Si además despliegas con DABs, replica la variable en `databricks.yml` bajo
+> `config.env` (mismo `name`/`value`). Adjuntar el recurso da el permiso; la env var le dice
+> al código **cuál** warehouse usar — se necesitan **ambas**.
 
 #### 2.4 — Variable local en `.env`
 
@@ -472,12 +489,19 @@ SQL_WAREHOUSE_ID=<tu_warehouse_id>
 
 En local funciona con tus credenciales (dueño del schema). Pero al desplegar, el *service
 principal* de la app necesita permisos de Unity Catalog sobre las tablas — que **no** se
-otorgan solos desde `databricks.yml`. Ejecutar una vez tras el primer deploy:
+otorgan al adjuntar el warehouse. El *application ID* del SP aparece en la app:
+*Overview → Service principal*. Ejecutar una vez tras el primer deploy (reemplazando
+`<app-sp-application-id>`):
 
 ```sql
-GRANT SELECT ON TABLE genie_workshop.sancor.polizas    TO `<app-service-principal>`;
-GRANT SELECT, MODIFY ON TABLE genie_workshop.sancor.siniestros TO `<app-service-principal>`;
+GRANT USE CATALOG ON CATALOG genie_workshop                    TO `<app-sp-application-id>`;
+GRANT USE SCHEMA  ON SCHEMA  genie_workshop.sancor             TO `<app-sp-application-id>`;
+GRANT SELECT          ON TABLE genie_workshop.sancor.polizas    TO `<app-sp-application-id>`;
+GRANT SELECT, MODIFY  ON TABLE genie_workshop.sancor.siniestros TO `<app-sp-application-id>`;
 ```
+
+> Sin estos grants, tras arreglar `SQL_WAREHOUSE_ID` el siguiente error sería de permisos
+> (`PERMISSION_DENIED` al hacer el SELECT/INSERT). `MODIFY` es lo que habilita el `INSERT`.
 
 ### Probar la herramienta
 
