@@ -5,9 +5,12 @@
 # ///
 # DBTITLE 1,Title
 # MAGIC %md
-# MAGIC # Evaluación Remota del Agente Sancor
+# MAGIC # Evaluación del Agente Sancor
 # MAGIC
-# MAGIC Evalúa el agente desplegado en Databricks Apps invocando su endpoint HTTP, sin necesidad de entorno local.
+# MAGIC Evalúa la calidad del agente **reconstruyéndolo dentro del notebook** (mismo modelo, system
+# MAGIC prompt y las 5 herramientas UC vía MCP) y simulando conversaciones multi-turno con
+# MAGIC `mlflow.genai.evaluate` + `ConversationSimulator`. No requiere OAuth ni llamar al endpoint
+# MAGIC HTTP de la app: usa la auth ambiente del notebook para invocar el modelo y las funciones UC.
 
 # COMMAND ----------
 
