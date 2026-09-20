@@ -1,33 +1,43 @@
-# Taller Genie Agent — Sancor Seguros Argentina
+# Taller Databricks: Genie · Agentes Custom · MLOps — Sancor Seguros
 
-Workshop práctico para aprender a configurar y optimizar **Databricks Genie Agent**
-usando un dataset sintético del sector seguros. El taller usa datos ficticios de
-Sancor Seguros Argentina como dominio de negocio.
+Workshop práctico de día completo sobre la plataforma de **datos + IA de Databricks**,
+construido sobre un dataset sintético del sector seguros (Sancor Seguros Argentina).
+Todo se apoya en **una misma base de datos gobernada en Unity Catalog**
+(`genie_workshop.sancor`): primero la exploramos en lenguaje natural, luego construimos un
+agente a medida sobre ella, y finalmente entrenamos y operamos un modelo de ML clásico —
+mostrando que la misma plataforma y el mismo gobierno cubren todo el espectro.
 
 ---
 
-## Objetivo del taller
+## Agenda del taller
 
-El taller sigue una metodología de mejora iterativa en dos etapas:
+El taller se organiza en **tres partes**, todas sobre el mismo dominio de datos:
 
-1. **Baseline:** conectar solo las 5 tablas al Genie Agent y ejecutar los 7
-   benchmarks. Se observa qué preguntas Genie responde correctamente y cuáles no.
+| Parte | Tema | Qué se aprende | Archivos |
+|-------|------|----------------|----------|
+| **1** | **Genie Agent** | Curar el agente de datos gestionado para que responda preguntas de negocio en lenguaje natural. La calidad se construye por **capas** (metadatos → SQL expressions → joins → example queries → UC functions → Knowledge Store), no con texto libre. | `00`–`07` + `resources/` |
+| **2** | **Agente Custom** | Construir un agente propio (`ResponsesAgent` en Databricks Apps): reutilizar las funciones UC como **herramientas** desde el AI Playground, agregar una **herramienta de escritura** por código, y **evaluarlo** con MLflow. | `07`, `08` + repo `agent-sancor-test-agent` |
+| **3** | **MLOps End-to-End** | El ciclo completo de ML clásico: EDA → features → entrenamiento → registro en UC → Model Serving → Feature Store → batch inference → monitoreo. | `09` |
 
-2. **Optimización por capas:** agregar el Knowledge Store capa por capa
-   (SQL expressions → joins → example queries → UC functions → instrucciones →
-   Volume de documentos) y volver a ejecutar los benchmarks después de cada capa
-   para medir el impacto de cada mejora.
-
-El mensaje central: **la calidad de Genie se construye por capas estructuradas,
-no con instrucciones de texto libre**.
+> **Hilo conductor:** los mismos datos de Sancor recorren las tres partes. Lo que se cura en
+> la Parte 1 (funciones UC, metadatos) se reutiliza como herramientas en la Parte 2, y las
+> mismas tablas alimentan el modelo de la Parte 3.
 
 ---
 
 ## Prerequisitos
 
+**Comunes (todas las partes):**
 - Acceso a un workspace de Databricks con Unity Catalog habilitado
 - Permisos para crear catálogos, schemas y funciones UC
 - SQL Warehouse disponible (Serverless recomendado)
+
+**Adicionales por parte:**
+- **Parte 2 (Agente Custom):** acceso al **AI Playground** y a **Databricks Apps**; un modelo
+  con *tool calling* (p. ej. Claude); para editar el código, `uv` + Databricks CLI (repo
+  `agent-sancor-test-agent`).
+- **Parte 3 (MLOps):** cómputo con **ML Runtime** (o serverless con
+  `databricks-feature-engineering`) y permiso para crear endpoints de **Model Serving**.
 
 ---
 
@@ -136,15 +146,32 @@ EDA → feature engineering → entrenamiento con MLflow → evaluación → reg
 
 ---
 
-## Recursos del taller
+## Parte 1 — Genie Agent
 
-### `resources/knowledge_store_snippets.md`
+Genie es el **agente de datos gestionado** de Databricks: responde preguntas de negocio en
+lenguaje natural sobre tablas de Unity Catalog. Esta parte enseña a **curarlo por capas** para
+subir su precisión, midiendo el impacto con 7 benchmarks.
+
+Metodología en dos etapas:
+
+1. **Baseline:** conectar solo las 5 tablas al Genie Agent y correr los 7 benchmarks — se
+   observa qué preguntas responde bien y cuáles no.
+2. **Optimización por capas:** agregar el Knowledge Store capa por capa (SQL expressions →
+   joins → example queries → UC functions → instrucciones → Volume de documentos), volviendo a
+   correr los benchmarks tras cada capa para medir la mejora.
+
+Mensaje central: **la calidad de Genie se construye por capas estructuradas, no con
+instrucciones de texto libre.**
+
+### Recursos: curación del Knowledge Store
+
+#### `resources/knowledge_store_snippets.md`
 Guía completa de curación del Knowledge Store, organizada por capas:
 SQL expressions (medidas, filtros, dimensiones), join relationships,
 example queries, UC functions e instrucciones de texto.
 **Contiene el contenido listo para copiar y pegar en la UI de Genie.**
 
-### `resources/benchmark_questions.md`
+#### `resources/benchmark_questions.md`
 7 preguntas benchmark con su SQL de referencia verificado y el resultado
 exacto esperado. Se usan para medir la calidad de Genie antes y después
 de cada capa de curación.
@@ -159,11 +186,9 @@ de cada capa de curación.
 | B6 — Top clientes por prima (sin PII) | Gobernanza / PII tags |
 | B7 — Tiempo promedio de resolución por ramo | Medidas + joins |
 
----
+### Flujo de trabajo de la Parte 1
 
-## Flujo de ejecución
-
-### Preparación (instructor — antes del taller)
+#### Preparación del entorno (instructor — crea los datos y objetos UC de las tres partes)
 
 ```
 00_setup.sql              → crear catálogo y schema
@@ -176,7 +201,7 @@ de cada capa de curación.
 05_validation.sql         → verificar que todo esté listo ✓
 ```
 
-### Durante el taller
+#### Durante el taller (Genie)
 
 1. Conectar las 5 tablas al Genie Agent (sin Knowledge Store)
 2. Ejecutar los 7 benchmarks → anotar cuáles pasan
